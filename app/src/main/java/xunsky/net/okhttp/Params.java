@@ -1,7 +1,7 @@
 package xunsky.net.okhttp;
 
 import java.util.HashMap;
-class Params {
+public class Params {
     HashMap<String,String> params;
     public static Params newInstance(){
         Params params = new Params(new HashMap<String, String>());
