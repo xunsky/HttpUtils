@@ -95,7 +95,7 @@ public class NetUtils {
                 sHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        getter.onFailed("NetUtils get:" + e.getMessage() + " \n" + e.getCause());
+                        getter.onFailed("NetUtils get:" + e.getMessage() + " \n" + e.getCause(),e);
                     }
                 });
             }
@@ -109,11 +109,11 @@ public class NetUtils {
                             try {
                                 getter.onSuccessed(response.body().string());
                             } catch (IOException e) {
-                                getter.onFailed("NetUtils get onSuccess:" + e.getMessage());
+                                getter.onFailed("NetUtils get onSuccess:" + e.getMessage(),e);
                             }
                         } else {
                             Log.d("meee", "NetUtils get:" + response.code());
-                            getter.onFailed("NetUtils get:" + response.code());
+                            getter.onFailed("NetUtils get:" + response.code(),new RuntimeException("code != 200"));
                         }
                     }
                 });
@@ -141,7 +141,7 @@ public class NetUtils {
                 sHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        callback.onFailed("请求失败:" + e.getMessage());
+                        callback.onFailed("请求失败:" + e.getMessage(),e);
                     }
                 });
             }
@@ -160,7 +160,7 @@ public class NetUtils {
                     sHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            callback.onFailed("http post code:" + response.code());
+                            callback.onFailed("http post code:" + response.code(),new RuntimeException("code != 200"));
                         }
                     });
                 }
@@ -267,7 +267,7 @@ public class NetUtils {
                 .enqueue(new Callback() {
                     @Override
                     public void onFailure(Call call, IOException e) {
-                        callback.onFailed("上传失败:" + e);
+                        callback.onFailed("上传失败:" + e,e);
                     }
 
                     @Override
@@ -279,10 +279,10 @@ public class NetUtils {
                                     try {
                                         callback.onSuccessed(response.body().string());
                                     } catch (IOException e) {
-                                        callback.onFailed("上传失败: on code==200" + e.getMessage());
+                                        callback.onFailed("上传失败: on code==200" + e.getMessage(),e);
                                     }
                                 } else {
-                                    callback.onFailed("上传失败:" + response.code());
+                                    callback.onFailed("上传失败:" + response.code(),new RuntimeException("code != 200"));
                                 }
                             }
                         });
@@ -304,7 +304,7 @@ public class NetUtils {
      * 回调
      */
     public interface OnNet {
-        void onSuccessed(String dataString);
-        void onFailed(String ErrorString);
+        void onSuccessed(String data);
+        void onFailed(String cause,Exception ex);
     }
 }
