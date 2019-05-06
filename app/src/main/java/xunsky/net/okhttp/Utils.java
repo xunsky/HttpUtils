@@ -14,7 +14,7 @@ import java.util.Map;
  * Created by junx on 2018/8/15.
  */
 
-class Utils {
+public class Utils {
     /**
      * get请求时拼接url的工具方法
      */

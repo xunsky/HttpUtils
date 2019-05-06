@@ -1,5 +1,6 @@
 package xunsky.net.okhttp;
 
+
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -29,20 +30,24 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-
 /**
  * Created by junx on 2018/7/14.
  */
 
 public class NetUtils {
-    public static LogInterceptor sLogInterceptor = new LogInterceptor();//可通过设置sLogInterceptor.isLog属性控制是否打印
+    private static boolean logEnabled = false;
+    private static LogInterceptor sLogInterceptor = new LogInterceptor(
+            new LogInterceptor.Logger() {
+                @Override
+                public void log(String message) {
+                    if (logEnabled)
+                        Log.d("LogInterceptor", message);
+                }
+            }
+    );
 
-    public static void startLog() {
-        sLogInterceptor.isLog = true;
-    }
-
-    public static void stopLog() {
-        sLogInterceptor.isLog = false;
+    public static void enableLog(boolean enabale) {
+        logEnabled = enabale;
     }
 
     /**
@@ -52,7 +57,7 @@ public class NetUtils {
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(10, TimeUnit.SECONDS)
             .writeTimeout(10, TimeUnit.SECONDS)
-            .addInterceptor(sLogInterceptor)
+            .addNetworkInterceptor(sLogInterceptor)
             .cookieJar(new CookieJar() {//okhttp默认不保存cookies
                 private final HashMap<String, List<Cookie>> cookieStore = new HashMap<>();
 
@@ -68,9 +73,11 @@ public class NetUtils {
                 }
             })
             .build();
-    public static OkHttpClient getOkhttpClient(){
+
+    public static OkHttpClient getOkhttpClient() {
         return sClient;
     }
+
     /**
      * 回调
      */
@@ -95,28 +102,38 @@ public class NetUtils {
                 sHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        getter.onFailed("NetUtils get:" + e.getMessage() + " \n" + e.getCause(),e);
+                        getter.onFailed("NetUtils get:" + e.getMessage() + " \n" + e.getCause(), e);
                     }
                 });
             }
 
             @Override
             public void onResponse(Call call, final Response response) throws IOException {
-                sHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (response.code() == 200) {
-                            try {
-                                getter.onSuccessed(response.body().string());
-                            } catch (IOException e) {
-                                getter.onFailed("NetUtils get onSuccess:" + e.getMessage(),e);
+                if (response.code() == 200) {
+                    try {
+                        final String string = response.body().string();
+                        sHandler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                getter.onSuccessed(string);
                             }
-                        } else {
-                            Log.d("meee", "NetUtils get:" + response.code());
-                            getter.onFailed("NetUtils get:" + response.code(),new RuntimeException("code != 200"));
-                        }
+                        });
+                    } catch (final IOException e) {
+                        sHandler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                getter.onFailed("NetUtils get onSuccess:" + e.getMessage(), e);
+                            }
+                        });
                     }
-                });
+                } else {
+                    sHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            getter.onFailed("NetUtils get:" + response.code(), new RuntimeException("code != 200"));
+                        }
+                    });
+                }
             }
         });
     }
@@ -127,7 +144,6 @@ public class NetUtils {
     }
 
     public static void post(final String url, final HashMap<String, String> map, final OnNet callback) {
-        Log.d("meee", "map:" + map);
         FormBody.Builder builder = new FormBody.Builder();
         for (String key : map.keySet()) {
             String value = map.get(key);
@@ -141,7 +157,7 @@ public class NetUtils {
                 sHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        callback.onFailed("请求失败:" + e.getMessage(),e);
+                        callback.onFailed("请求失败:" + e.getMessage(), e);
                     }
                 });
             }
@@ -160,7 +176,7 @@ public class NetUtils {
                     sHandler.post(new Runnable() {
                         @Override
                         public void run() {
-                            callback.onFailed("http post code:" + response.code(),new RuntimeException("code != 200"));
+                            callback.onFailed("http post code:" + response.code(), new RuntimeException("code != 200"));
                         }
                     });
                 }
@@ -234,15 +250,17 @@ public class NetUtils {
     }
 
 
-
     public interface OnDownloadListener {
         void onDownloadSuccess(String path);
+
         void onDownloading(int progress);
+
         void onDownloadFailed();
     }
 
     /*---------------------------------------------------上传----------------------------------------------------------*/
     private static final MediaType MEDIA_OBJECT_STREAM = MediaType.parse("application/octet-stream");
+
     public static void upload(String url, HashMap<String, String> params, final OnNet callback, File... files) {
         MultipartBody.Builder builder = new MultipartBody.Builder();
         builder.setType(MultipartBody.FORM);
@@ -266,26 +284,42 @@ public class NetUtils {
         sClient.newCall(request)
                 .enqueue(new Callback() {
                     @Override
-                    public void onFailure(Call call, IOException e) {
-                        callback.onFailed("上传失败:" + e,e);
+                    public void onFailure(Call call, final IOException e) {
+                        sHandler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                callback.onFailed("上传失败:" + e, e);
+                            }
+                        });
                     }
 
                     @Override
                     public void onResponse(Call call, final Response response) throws IOException {
-                        sHandler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                if (response.code() == 200) {
-                                    try {
-                                        callback.onSuccessed(response.body().string());
-                                    } catch (IOException e) {
-                                        callback.onFailed("上传失败: on code==200" + e.getMessage(),e);
+                        if (response.code() == 200) {
+                            try {
+                                final String string = response.body().string();
+                                sHandler.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        callback.onSuccessed(string);
                                     }
-                                } else {
-                                    callback.onFailed("上传失败:" + response.code(),new RuntimeException("code != 200"));
-                                }
+                                });
+                            } catch (final IOException e) {
+                                sHandler.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        callback.onFailed("上传失败: on code==200" + e.getMessage(), e);
+                                    }
+                                });
                             }
-                        });
+                        } else {
+                            sHandler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    callback.onFailed("上传失败:" + response.code(), new RuntimeException("code != 200"));
+                                }
+                            });
+                        }
                     }
                 });
     }
@@ -305,6 +339,6 @@ public class NetUtils {
      */
     public interface OnNet {
         void onSuccessed(String data);
-        void onFailed(String cause,Exception ex);
+        void onFailed(String cause, Exception ex);
     }
 }
