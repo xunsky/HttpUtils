@@ -184,6 +184,45 @@ public class NetUtils {
         });
     }
 
+    /*---------------------------------------------------restful-----------------------------------------------------------*/
+    private static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json");
+    public static void post(final String url, final String json, final OnNet callback) {
+        FormBody.Builder builder = new FormBody.Builder();
+        RequestBody.create(MEDIA_TYPE_JSON, json);
+        FormBody body = builder.build();
+        Request request = new Request.Builder().url(url).post(body).build();
+        sClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, final IOException e) {
+                sHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        callback.onFailed("请求失败:" + e.getMessage(), e);
+                    }
+                });
+            }
+
+            @Override
+            public void onResponse(Call call, final Response response) throws IOException {
+                if (response.code() == 200) {
+                    final String string = response.body().string();
+                    sHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            callback.onSuccessed(string);
+                        }
+                    });
+                } else {
+                    sHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            callback.onFailed("http post code:" + response.code(), new RuntimeException("code != 200"));
+                        }
+                    });
+                }
+            }
+        });
+    }
     /*---------------------------------------------------下载-----------------------------------------------------------*/
     private static int progress;
 
