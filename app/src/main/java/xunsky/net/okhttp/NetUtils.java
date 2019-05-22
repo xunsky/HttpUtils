@@ -187,10 +187,8 @@ public class NetUtils {
     /*---------------------------------------------------restful-----------------------------------------------------------*/
     private static final MediaType MEDIA_TYPE_JSON = MediaType.parse("application/json");
     public static void post(final String url, final String json, final OnNet callback) {
-        FormBody.Builder builder = new FormBody.Builder();
-        RequestBody.create(MEDIA_TYPE_JSON, json);
-        FormBody body = builder.build();
-        Request request = new Request.Builder().url(url).post(body).build();
+        RequestBody requestBody = RequestBody.create(MEDIA_TYPE_JSON, json);
+        Request request = new Request.Builder().url(url).post(requestBody).build();
         sClient.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, final IOException e) {
