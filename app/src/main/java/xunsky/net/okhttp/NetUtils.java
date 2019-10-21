@@ -222,77 +222,68 @@ public class NetUtils {
         });
     }
     /*---------------------------------------------------下载-----------------------------------------------------------*/
-    private static int progress;
 
-    public static void download(final String url, final String saveDir, final OnDownloadListener listener) {
-        Request request = new Request.Builder().url(url).build();
-        sClient.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(Call call, final IOException e) {
-                sHandler.post(new Runnable() {
+    public static void download(final String url, final String destFileDir, final String destFileName, final OnDownloadListener listener) {
+        Request request = new Request.Builder()
+                .url(url)
+                .build();
+        getOkhttpClient()
+                .newCall(request)
+                .enqueue(new Callback() {
+
                     @Override
-                    public void run() {
-                        listener.onDownloadFailed();
+                    public void onFailure(Call call, IOException e) {
+                        // 下载失败监听回调
+                        listener.onDownloadFailed(e);
                     }
-                });
-            }
 
-            @Override
-            public void onResponse(Call call, final Response response) throws IOException {
-                InputStream is = null;
-                byte[] buf = new byte[2048];
-                int len = 0;
-                FileOutputStream fos = null;
-                // 储存下载文件的目录
-                String savePath = Utils.isExistDir(saveDir);
-                try {
-                    is = response.body().byteStream();
-                    long total = response.body().contentLength();
-                    final File file = new File(savePath, Utils.getNameFromUrl(url));
-                    fos = new FileOutputStream(file);
-                    long sum = 0;
-                    while ((len = is.read(buf)) != -1) {
-                        fos.write(buf, 0, len);
-                        sum += len;
-                        progress = (int) (sum * 1.0f / total * 100);
-                        // 下载中
-                        sHandler.post(new Runnable() {
-                            @Override
-                            public void run() {
+                    @Override
+                    public void onResponse(Call call, Response response) throws IOException {
+                        InputStream is = null;
+                        byte[] buf = new byte[2048];
+                        int len = 0;
+                        FileOutputStream fos = null;
+                        File dir = new File(destFileDir);
+                        if (!dir.exists()) {
+                            dir.mkdirs();
+                        }
+
+                        File file = new File(dir, destFileName);
+                        try {
+                            is = response.body().byteStream();
+                            long total = response.body().contentLength();
+                            fos = new FileOutputStream(file);
+                            long sum = 0;
+                            while ((len = is.read(buf)) != -1) {
+                                fos.write(buf, 0, len);
+                                sum += len;
+                                int progress = (int) (sum * 1.0f / total * 100);
                                 listener.onDownloading(progress);
                             }
-                        });
+                            fos.flush();
+                            listener.onDownloadSuccess(file);
+                        } catch (Exception e) {
+                            listener.onDownloadFailed(e);
+                        } finally {
+                            try {
+                                if (is != null)
+                                    is.close();
+                            } catch (IOException e) {
+                            }
+                            try {
+                                if (fos != null)
+                                    fos.close();
+                            } catch (IOException e) {
+                            }
+                        }
                     }
-                    fos.flush();
-                    // 下载完成
-                    sHandler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            listener.onDownloadSuccess(file.getAbsolutePath());
-                        }
-                    });
-                } catch (Exception e) {
-                    sHandler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            listener.onDownloadFailed();
-                        }
-                    });
-                } finally {
-                    Utils.closeIO(is);
-                    Utils.closeIO(fos);
-                }
-            }
-        });
+                });
     }
 
-
     public interface OnDownloadListener {
-        void onDownloadSuccess(String path);
-
+        void onDownloadSuccess(File file);
         void onDownloading(int progress);
-
-        void onDownloadFailed();
+        void onDownloadFailed(Exception e);
     }
 
     /*---------------------------------------------------上传----------------------------------------------------------*/
