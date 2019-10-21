@@ -230,11 +230,15 @@ public class NetUtils {
         getOkhttpClient()
                 .newCall(request)
                 .enqueue(new Callback() {
-
                     @Override
-                    public void onFailure(Call call, IOException e) {
+                    public void onFailure(Call call,final IOException e) {
                         // 下载失败监听回调
-                        listener.onDownloadFailed(e);
+                        sHandler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                listener.onDownloadFailed(e);
+                            }
+                        });
                     }
 
                     @Override
@@ -248,7 +252,7 @@ public class NetUtils {
                             dir.mkdirs();
                         }
 
-                        File file = new File(dir, destFileName);
+                        final File file = new File(dir, destFileName);
                         try {
                             is = response.body().byteStream();
                             long total = response.body().contentLength();
@@ -257,13 +261,30 @@ public class NetUtils {
                             while ((len = is.read(buf)) != -1) {
                                 fos.write(buf, 0, len);
                                 sum += len;
-                                int progress = (int) (sum * 1.0f / total * 100);
-                                listener.onDownloading(progress);
+                                final int progress = (int) (sum * 1.0f / total * 100);
+                                sHandler.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        listener.onDownloading(progress);
+                                    }
+                                });
                             }
                             fos.flush();
-                            listener.onDownloadSuccess(file);
-                        } catch (Exception e) {
-                            listener.onDownloadFailed(e);
+                            sHandler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    listener.onDownloadSuccess(file);
+                                }
+                            });
+
+                        } catch (final Exception e) {
+                            sHandler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    listener.onDownloadFailed(e);
+                                }
+                            });
+
                         } finally {
                             try {
                                 if (is != null)
