@@ -20,12 +20,14 @@ public class MainActivity extends AppCompatActivity {
                 .setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        test();
                     }
                 });
     }
 
     private void test(){
+    }
+
+    private void testNetUtils(){
         String url="https://acj4.pc6.com/pc6_soure/2019-10/com.taobao.idlefish_176.apk";
         String dir = getCacheDir().getAbsolutePath();
         Log.d("meee","("+Thread.currentThread().getStackTrace()[2].getFileName()+":"+Thread.currentThread().getStackTrace()[2].getLineNumber()+")\n"

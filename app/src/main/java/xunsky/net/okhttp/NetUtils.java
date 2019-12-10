@@ -36,15 +36,22 @@ import okhttp3.Response;
 
 public class NetUtils {
     private static boolean logEnabled = false;
+    private static LogInterceptor.Logger localLogger;
     private static LogInterceptor sLogInterceptor = new LogInterceptor(
             new LogInterceptor.Logger() {
                 @Override
                 public void log(String message) {
                     if (logEnabled)
                         Log.d("LogInterceptor", message);
+                    if (localLogger!=null){
+                        localLogger.log(message);
+                    }
                 }
             }
     );
+    public static void setLocalLogger(LogInterceptor.Logger logger){
+        localLogger=logger;
+    }
 
     public static void enableLog(boolean enabale) {
         logEnabled = enabale;
